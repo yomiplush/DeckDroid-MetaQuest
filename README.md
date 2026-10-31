@@ -25,7 +25,7 @@ export JAVA_HOME=/path/to/java17 ANDROID_HOME=/path/to/android-sdk
 bash tools/quest/build-apks.sh
 ```
 
-The script prepares upstream runtime inputs once, builds three APKs, checks payloads/JNI exports, alignment, signatures and package IDs, then writes `dist/quest/SHA256SUMS` and build metadata. To reuse already verified runtime inputs, use `DROIDDECK_QUEST_REUSE_INPUTS=1`. Individual targets can be built with `./gradlew :app:assembleRelease -PquestTarget=quest3` after preparation.
+The x86 Docker cross-test image uses a PRoot/QEMU runner so ARM64 subprocess tests work without host binfmt registration. The script prepares upstream runtime inputs once, builds three APKs, checks payloads/JNI exports, alignment, signatures and package IDs, then writes `dist/quest/SHA256SUMS` and build metadata. To reuse already verified runtime inputs, use `DROIDDECK_QUEST_REUSE_INPUTS=1`. Individual targets can be built with `./gradlew :app:assembleRelease -PquestTarget=quest3` after preparation.
 
 Local experimental APKs use the repository's **public test signing key**, not a private production signing identity. They install separately from upstream and the original fork. Do not use the test key for a trusted production release. Upstream Actions workflows require upstream credentials; this change does not enable them or publish builds.
 

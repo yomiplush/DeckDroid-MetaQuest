@@ -12,7 +12,7 @@ build='
 if [[ $(uname -m) = x86_64 ]]; then
     cache=${DROIDDECK_XBOX_CACHE:-"${HOME}/.cache/droiddeck-xbox-cross"}
     platform=linux/amd64
-    image=droiddeck-xbox-cross:$(shasum -a 256 "$repo/tools/xbox/cross.Dockerfile" | cut -c1-12)
+    image=droiddeck-xbox-cross:$(cd "$repo/tools/xbox" && shasum -a 256 cross.Dockerfile qemu-runner.sh | shasum -a 256 | cut -c1-12)
     docker image inspect "$image" >/dev/null 2>&1 \
         || docker build --platform "$platform" -t "$image" -f "$repo/tools/xbox/cross.Dockerfile" "$repo/tools/xbox"
 else

@@ -26,3 +26,8 @@ ENV CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
     PKG_CONFIG_LIBDIR_aarch64_unknown_linux_gnu=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER=qemu-aarch64
+
+# QEMU alone cannot execute ARM64 children spawned by an emulated test process.
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends proot && rm -rf /var/lib/apt/lists/*
+COPY qemu-runner.sh /usr/local/bin/quest-qemu
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER=/usr/local/bin/quest-qemu
