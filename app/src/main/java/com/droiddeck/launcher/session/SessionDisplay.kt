@@ -26,9 +26,9 @@ object SessionDisplay {
         else orient(resolve(panel, 720, SessionPrefs.SHAPE_AUTO))
     }
 
-    fun resolutionOptions(panel: Pair<Int, Int>): List<String> {
+    fun resolutionOptions(panel: Pair<Int, Int>, heights: List<Int> = PRESET_HEIGHTS): List<String> {
         val panelHeight = minOf(panel.first, panel.second)
-        return PRESET_HEIGHTS.filter { it <= panelHeight }.map { "${it}p" }
+        return heights.filter { it > 0 && it <= panelHeight }.distinct().sorted().map { "${it}p" }
             .filter { resolveChoice(panel, it) != screenSize(panel) } + MATCH_SCREEN + FOLLOW_SCREEN
     }
 

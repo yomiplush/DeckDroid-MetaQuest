@@ -51,6 +51,14 @@ class SessionDisplayTest {
         assertEquals(2560 to 1440, SessionDisplay.resolveChoice(2560 to 1440, SessionDisplay.MATCH_SCREEN))
     }
 
+    @Test fun extendedPresetsExpose1440pWithoutRemovingScreenOrFollow() {
+        val heights = listOf(720, 900, 1080, 1440)
+        assertEquals(listOf("720p", "900p", "1080p", "1440p", "screen", "follow"),
+            SessionDisplay.resolutionOptions(4128 to 2208, heights))
+        assertFalse("1440p" in SessionDisplay.resolutionOptions(1920 to 1080, heights))
+        assertEquals(2560 to 1440, SessionDisplay.resolveChoice(2560 to 1440, "1440p"))
+    }
+
     @Test fun unfoldedControlsKeepTheGameSixteenByNineAcrossTheWidth() {
         assertEquals(606, SessionDisplay.unfoldedGameHeight(1080, 1920))
         assertEquals(1376, SessionDisplay.unfoldedGameHeight(2448, 1848))

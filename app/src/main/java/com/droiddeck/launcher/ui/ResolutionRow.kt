@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.droiddeck.launcher.R
 import com.droiddeck.launcher.session.SessionDisplay
+import com.droiddeck.launcher.session.QuestExperimental
 
 @Composable
 fun ResolutionRow(
@@ -19,7 +20,7 @@ fun ResolutionRow(
     val custom = "custom"
     val size = SessionDisplay.resolveChoice(panel, choice, portrait)
     val screen = SessionDisplay.resolveChoice(panel, SessionDisplay.MATCH_SCREEN, portrait)
-    val choices = SessionDisplay.resolutionOptions(panel)
+    val choices = SessionDisplay.resolutionOptions(panel, QuestExperimental.resolutionHeights())
     val selected = if (choice == SessionDisplay.FOLLOW_SCREEN) choice
         else if (size == screen) SessionDisplay.MATCH_SCREEN else choice
     var editCustom by remember { mutableStateOf(false) }
@@ -27,7 +28,7 @@ fun ResolutionRow(
         val dimensions = SessionDisplay.resolveChoice(panel, value, portrait)
         value to if (value == SessionDisplay.MATCH_SCREEN) stringResource(R.string.display_match_screen, screen.first, screen.second)
         else if (value == SessionDisplay.FOLLOW_SCREEN) stringResource(R.string.display_follow_screen)
-        else if (value == SessionDisplay.DEFAULT_RESOLUTION) stringResource(R.string.mode_res_default, "${dimensions.first}×${dimensions.second}")
+        else if (value == QuestExperimental.defaultResolution()) stringResource(R.string.mode_res_default, "${dimensions.first}×${dimensions.second}")
         else "${dimensions.first}×${dimensions.second}"
     } + (custom to if (selected in choices) stringResource(R.string.mode_res_custom)
         else stringResource(R.string.mode_res_custom_value, size.first, size.second))

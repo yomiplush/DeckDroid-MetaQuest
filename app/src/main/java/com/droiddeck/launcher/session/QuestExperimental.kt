@@ -24,6 +24,11 @@ object QuestExperimental {
     fun isSupported(): Boolean = supported(Build.MODEL, Build.DEVICE, Build.MANUFACTURER)
     fun isQuest2(): Boolean = quest2(Build.MODEL, Build.DEVICE, Build.MANUFACTURER)
 
+    fun defaultResolution(): String = if (isSupported() && !isQuest2()) "1080p" else SessionDisplay.DEFAULT_RESOLUTION
+
+    fun resolutionHeights(): List<Int> = if (isSupported() && !isQuest2()) listOf(720, 900, 1080, 1440)
+        else listOf(720, 900, 1080)
+
     fun defaultAndroidDriver(): String? = when {
         !isSupported() -> null
         isQuest2() -> DRIVER_A6XX
@@ -53,9 +58,20 @@ object QuestExperimental {
                 .putBoolean(defaultsKey, true)
                 .apply()
         }
+        if (!prefs.getBoolean("questDisplayDefaultsV1", false)) {
+            val edit = prefs.edit()
+            for (mode in listOf(SessionService.MODE_STEAM, SessionService.MODE_DESKTOP, SessionService.MODE_RUN)) {
+                if (!SessionPrefs.resolutionChosen(context, mode) && !prefs.contains("shape")) {
+                    edit.putString("displayResolution.$mode", defaultResolution())
+                }
+            }
+            edit.putBoolean("questDisplayDefaultsV1", true).apply()
+        }
         val report = buildString {
             appendLine("DroidDeck Quest Experimental ${BuildConfig.VERSION_NAME}")
-            appendLine("package=${context.packageName}")
+            appendLine("package=${context.packageName} target=${BuildConfig.QUEST_TARGET}")
+            appendLine("initialResolution=${defaultResolution()} presets=${resolutionHeights().joinToString()}")
+            appendLine("steamResolution=${SessionPrefs.resolutionChoice(context, SessionService.MODE_STEAM, SessionDisplay.panelSize(context))}")
             appendLine("manufacturer=${Build.MANUFACTURER} model=${Build.MODEL}")
             appendLine("device=${Build.DEVICE} board=${Build.BOARD} hardware=${Build.HARDWARE}")
             appendLine("android=${Build.VERSION.RELEASE} sdk=${Build.VERSION.SDK_INT}")

@@ -1,3 +1,40 @@
+# DeckDroid — Quest 3 / 3S / 2
+
+A fork of [DroidDeck](https://github.com/Droid-Deck/DroidDeck) maintained by [yomiplush](https://github.com/yomiplush), based on upstream 0.6.7 (`b07eca3c`). This fork is independent of the DroidDeck team. GPL-3.0 and all third-party notices are retained.
+
+## Quest builds
+
+| APK target | Package | Initial resolution | Android driver |
+| --- | --- | --- | --- |
+| Quest 3 | `com.yomiplush.deckdroid.quest3` | 1080p | A7xx + Quest GPUOBJ |
+| Quest 3S | `com.yomiplush.deckdroid.quest3s` | 1080p | A7xx + Quest GPUOBJ |
+| Quest 2 | `com.yomiplush.deckdroid.quest2` | 720p | A6xx + Quest GPUOBJ |
+
+Actual detected hardware selects the driver in every APK; target names never force an incompatible GPU driver. Separate packages keep their own settings and game/runtime data. These are 2D panel applications, with upstream's experimental SteamVR features retained; they do not make arbitrary PC games native VR applications.
+
+Quest 3 and 3S share XR2 Gen 2 and 8GB RAM. Their higher initial resolution uses more of that rendering budget. Use 720p/900p for demanding games; 1440p is available on a sufficiently large reported panel, alongside custom resolution, Match screen and Follow screen. The old fork's hard 1920px cap and globally forced linear-only profile are replaced by upstream's newer device-aware presentation fixes. Existing user resolution settings and the original fork’s session multicast lock for LAN discovery are preserved. FEX, driver and compatibility improvements come from upstream; no higher FPS or sustained clock rate is claimed without hardware measurements. OS thermal control remains active.
+
+**Experimental: hardware validation pending on Quest 3, 3S and 2.** Compilation and regression tests cannot establish headset rendering, input, Steam sign-in, thermal behavior or game compatibility. Quest 2's A6xx and DirectX 12 support remain experimental. Start with DirectX 11 games at 720p on Quest 2. Export Share logs for failures; `quest-startup.txt` records model, selected driver and display defaults.
+
+## Build and verify
+
+Use Java 17, Android SDK 34, NDK 27.3.13750724, Docker, Rust/rustup/cargo-ndk, GitHub CLI, Python 3 and zstd.
+
+```sh
+export JAVA_HOME=/path/to/java17 ANDROID_HOME=/path/to/android-sdk
+bash tools/quest/build-apks.sh
+```
+
+The script prepares upstream runtime inputs once, builds three APKs, checks payloads/JNI exports, alignment, signatures and package IDs, then writes `dist/quest/SHA256SUMS` and build metadata. To reuse already verified runtime inputs, use `DROIDDECK_QUEST_REUSE_INPUTS=1`. Individual targets can be built with `./gradlew :app:assembleRelease -PquestTarget=quest3` after preparation.
+
+Local experimental APKs use the repository's **public test signing key**, not a private production signing identity. They install separately from upstream and the original fork. Do not use the test key for a trusted production release. Upstream Actions workflows require upstream credentials; this change does not enable them or publish builds.
+
+Tests: `./gradlew -PskipRust=true :app:testDebugUnitTest --tests '*QuestExperimentalTest' --tests '*SessionDisplayTest'`; `python3 -m unittest discover -s tools/tests -p 'test_quest*.py'`.
+
+---
+
+## Upstream documentation
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="artwork/droiddeck-banner-dark.svg">

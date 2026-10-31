@@ -125,6 +125,12 @@ def variantSuffixes = rootProject.file('tools/release/variants.txt').readLines()
     .collect { def f = it.trim().split(/\s+/); "${f[1]}=${f[2] == '-' ? '' : f[2]}" }
     .join(';')
 
+def questTarget = providers.gradleProperty('questTarget').getOrElse('universal')
+def questLabels = [quest3: 'Quest 3', quest3s: 'Quest 3S', quest2: 'Quest 2']
+if (questTarget != 'universal' && !questLabels.containsKey(questTarget)) {
+    throw new GradleException('questTarget must be quest3, quest3s, quest2 or universal')
+}
+
 android {
     namespace 'com.droiddeck.launcher'
     compileSdk 34
@@ -132,10 +138,15 @@ android {
 
     defaultConfig {
         applicationId "com.droiddeck.launcher"
+        if (questTarget != 'universal') {
+            applicationId "com.yomiplush.deckdroid.${questTarget}"
+        }
+        manifestPlaceholders = [appLabel: questTarget == 'universal' ? '@string/app_name' : "DeckDroid ${questLabels[questTarget]}"]
+        buildConfigField "String", "QUEST_TARGET", "\"${questTarget}\""
         minSdkVersion 26
         targetSdkVersion 28
         versionCode 16
-        versionName "0.6.7"
+        versionName (questTarget == 'universal' ? "0.6.7" : "0.6.7-${questTarget}")
         buildConfigField "String", "BUILD_LABEL", "\"${escapedBuildLabel}\""
         buildConfigField "String", "SOURCE_COMMIT", "\"${sourceCommit}\""
         buildConfigField "int", "PR_NUMBER", "${prNumber}"

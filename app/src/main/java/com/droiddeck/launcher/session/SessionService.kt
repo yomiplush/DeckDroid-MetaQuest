@@ -64,6 +64,7 @@ class SessionService : Service() {
     private val stopLock = Any()
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    private var multicastLock: WifiManager.MulticastLock? = null
     private var sessionPid = -1
     private val auxiliaryProcesses = HashMap<Int, Long>()
     private val auxiliaryProcessesLock = Any()
@@ -1918,8 +1919,8 @@ class SessionService : Service() {
         } catch (t: Throwable) {
             Log.w(TAG, "no wake lock (${t.message}) - the session may be killed in the background")
         }
+        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         try {
-            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             val allowed = DeviceSupport.lowLatencyWifiSafe()
             if (!allowed) Log.i(TAG, "wifi lock skipped: its low-latency mode resets this device")
             @Suppress("DEPRECATION")
@@ -1933,6 +1934,16 @@ class SessionService : Service() {
             Log.i(TAG, "wifi lock held=${wifiLock?.isHeld}")
         } catch (t: Throwable) {
             Log.w(TAG, "no wifi lock (${t.message}) - a backgrounded download may stall")
+        }
+        try {
+            if (multicastLock?.isHeld != true) {
+                multicastLock = wifi?.createMulticastLock("DroidDeck:session-multicast")?.apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "no multicast lock (${t.message}) - LAN discovery may not work")
         }
     }
 
@@ -1949,6 +1960,12 @@ class SessionService : Service() {
             Log.w(TAG, "releasing the wifi lock", t)
         }
         wifiLock = null
+        try {
+            multicastLock?.takeIf { it.isHeld }?.release()
+        } catch (t: Throwable) {
+            Log.w(TAG, "releasing the multicast lock", t)
+        }
+        multicastLock = null
     }
 
 

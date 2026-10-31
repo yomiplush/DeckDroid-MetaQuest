@@ -105,6 +105,38 @@ class QuestExperimentalTest {
         }
     }
 
+    @Test fun displayDefaultsUseTheDeviceBudgetWithoutOverwritingUserChoices() {
+        for ((model, expected) in listOf("Quest 3" to "1080p", "Quest 3S" to "1080p", "Quest 2" to "720p")) {
+            context.getSharedPreferences("session", Context.MODE_PRIVATE).edit().clear().commit()
+            ShadowBuild.setModel(model)
+            QuestExperimental.initialize(context)
+            for (mode in listOf(SessionService.MODE_STEAM, SessionService.MODE_DESKTOP, SessionService.MODE_RUN)) {
+                assertEquals("$model/$mode", expected, SessionPrefs.resolutionChoice(context, mode, 4128 to 2208))
+            }
+            SessionPrefs.setResolutionChoice(context, SessionService.MODE_STEAM, "2560x1440")
+            QuestExperimental.initialize(context)
+            assertEquals("2560x1440", SessionPrefs.resolutionChoice(context, SessionService.MODE_STEAM, 4128 to 2208))
+        }
+    }
+
+    @Test fun performanceDefaultsPreserveLegacyResolutionAndShapeSettings() {
+        ShadowBuild.setModel("Quest 3")
+        val prefs = context.getSharedPreferences("session", Context.MODE_PRIVATE)
+        prefs.edit().putInt("resolutionCap.steam", 900).commit()
+        QuestExperimental.initialize(context)
+        assertEquals("900p", SessionPrefs.resolutionChoice(context, "steam", 1920 to 1080))
+        prefs.edit().clear().putString("shape", SessionPrefs.SHAPE_AUTO).commit()
+        QuestExperimental.initialize(context)
+        assertFalse(prefs.contains("displayResolution.steam"))
+    }
+
+    @Test fun onlyQuest3GenerationOffers1440pPresets() {
+        for ((model, expected) in listOf("Quest 3" to true, "Quest 3S" to true, "Quest 2" to false, "Phone" to false)) {
+            ShadowBuild.setModel(model)
+            assertEquals(model, expected, 1440 in QuestExperimental.resolutionHeights())
+        }
+    }
+
     @Test fun installedPackagesUseSeparateSandboxSockets() {
         val packages = listOf("com.droiddeck.launcher", "com.tencent.ig",
             "com.antutu.benchmark.full", "com.ludashi.benchmark")
