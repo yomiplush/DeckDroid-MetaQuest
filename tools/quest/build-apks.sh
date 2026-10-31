@@ -40,7 +40,7 @@ print('Verified all six embedded add-on packs')
 PYPACKS
     python3 tools/release/check_android_libraries.py "$apk" --readelf "$readelf" "${stores_check[@]}"
     "$build_tools/zipalign" -c -p 4 "$apk"
-    "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$output/$target-signature.txt"
+    "$build_tools/apksigner" verify --min-sdk-version 21 --verbose --print-certs "$apk" > "$output/$target-signature.txt"
     for scheme in v1 v2 v3; do
         grep -q "Verified using $scheme scheme .*: true" "$output/$target-signature.txt"
     done
