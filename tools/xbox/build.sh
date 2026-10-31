@@ -14,6 +14,8 @@ if [[ $(uname -m) = aarch64 ]]; then export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_G
 cd "$source_dir"
 cargo build --locked --release --no-default-features --target aarch64-unknown-linux-gnu -p xodus-cli -p xodus-service
 if [[ $(uname -m) = aarch64 || -n ${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER:-} ]]; then
+    # Emulation cannot meet the library tests' short deadlines under parallel load.
+    if [[ $(uname -m) != aarch64 ]]; then export RUST_TEST_THREADS=1; fi
     cargo test --locked --release --no-default-features --target aarch64-unknown-linux-gnu -p xodus-cli
     cargo test --locked --release --no-default-features --target aarch64-unknown-linux-gnu -p xodus credential_
     cargo test --locked --release --no-default-features --target aarch64-unknown-linux-gnu -p msixvc streaming_
