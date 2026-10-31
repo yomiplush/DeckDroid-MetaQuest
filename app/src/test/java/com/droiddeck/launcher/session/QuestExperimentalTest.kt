@@ -23,6 +23,21 @@ class QuestExperimentalTest {
         ShadowBuild.setDevice("phone")
     }
 
+    @Test fun timestampFixMigratesOnlyPreviousBundledQuestDrivers() {
+        for ((model, old, current) in listOf(
+            Triple("Quest 3", "turnip25.1.0-quest1", "turnip25.1.0-quest1-r2"),
+            Triple("Quest 2", "turnip26.3.0-quest2", "turnip26.3.0-quest2-r2"))) {
+            ShadowBuild.setModel(model)
+            QuestExperimental.initialize(context)
+            SessionPrefs.setAndroidDriver(context, old)
+            QuestExperimental.initialize(context)
+            assertEquals(current, SessionPrefs.androidDriver(context))
+            SessionPrefs.setAndroidDriver(context, "user-driver")
+            QuestExperimental.initialize(context)
+            assertEquals("user-driver", SessionPrefs.androidDriver(context))
+        }
+    }
+
     @Test fun otherDevicesKeepTheirSettings() {
         for (model in listOf("Phone", "Quest", "Quest Pro")) {
             ShadowBuild.setModel(model)

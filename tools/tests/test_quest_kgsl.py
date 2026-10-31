@@ -10,6 +10,14 @@ QUEST = Path(__file__).resolve().parents[1] / 'quest'
 
 @unittest.skipUnless(sys.platform == 'linux' and shutil.which('gcc'), 'needs Linux and gcc')
 class QuestKgslTest(unittest.TestCase):
+    def test_denied_timestamp_queries(self):
+        with tempfile.TemporaryDirectory() as folder:
+            binary = str(Path(folder) / 'test-timestamps')
+            subprocess.run(['gcc', '-Wall', '-Wextra', '-Werror', '-O2', '-o', binary,
+                            str(QUEST / 'test_kgsl_timestamp.c'), str(QUEST / 'kgsl_compat.c')], check=True)
+            result = subprocess.run([binary], capture_output=True, text=True, check=True, timeout=10)
+            self.assertIn('PASS: denied timestamp queries', result.stdout)
+
     def test_allocation_passthrough_translation_and_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             binary = str(Path(folder) / 'test-kgsl')

@@ -145,8 +145,8 @@ android {
         buildConfigField "String", "QUEST_TARGET", "\"${questTarget}\""
         minSdkVersion 26
         targetSdkVersion 28
-        versionCode 16
-        versionName (questTarget == 'universal' ? "0.6.7" : "0.6.7-${questTarget}")
+        versionCode 17
+        versionName (questTarget == 'universal' ? "0.6.7" : "0.6.7-${questTarget}-r2")
         buildConfigField "String", "BUILD_LABEL", "\"${escapedBuildLabel}\""
         buildConfigField "String", "SOURCE_COMMIT", "\"${sourceCommit}\""
         buildConfigField "int", "PR_NUMBER", "${prNumber}"

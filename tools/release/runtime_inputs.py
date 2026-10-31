@@ -62,18 +62,18 @@ def outputs(root):
     for library in ['libproot.so', 'libproot-loader.so', 'libdirectaudiorelay.so']:
         result['lib/arm64-v8a/' + library] = 'app/src/main/jniLibs/arm64-v8a/' + library
     result['assets/pulseaudio.tzst'] = 'app/build/prepared-assets/pulseaudio.tzst'
-    result['assets/graphics_driver/adrenotools-turnip25.1.0-quest1.tzst'] = \
-        'app/build/prepared-assets/graphics_driver/adrenotools-turnip25.1.0-quest1.tzst'
-    for name in ['turnip26.3.0-a6xx', 'turnip26.3.0-quest2']:
+    result['assets/graphics_driver/adrenotools-turnip25.1.0-quest1-r2.tzst'] = \
+        'app/build/prepared-assets/graphics_driver/adrenotools-turnip25.1.0-quest1-r2.tzst'
+    for name in ['turnip26.3.0-a6xx', 'turnip26.3.0-quest2-r2']:
         result[f'assets/graphics_driver/adrenotools-{name}.tzst'] = \
             f'app/build/prepared-assets/graphics_driver/adrenotools-{name}.tzst'
     return result
 
 
 def required():
-    paths = ['assets/graphics_driver/adrenotools-turnip25.1.0-quest1.tzst']
+    paths = ['assets/graphics_driver/adrenotools-turnip25.1.0-quest1-r2.tzst']
     paths += [f'assets/graphics_driver/adrenotools-{name}.tzst'
-              for name in ['turnip26.3.0-a6xx', 'turnip26.3.0-quest2']]
+              for name in ['turnip26.3.0-a6xx', 'turnip26.3.0-quest2-r2']]
     paths += ['assets/linuxfs/' + name for name in ['libfakeinput.so', 'libblsession.so',
              'libblfastpath.so', 'libssbs.so', 'usr/local/bin/droiddeck-clipboard',
              'usr/local/bin/droiddeck-gog-maintenance',

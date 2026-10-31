@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Quest allocation adapter around the unchanged bundled Android Turnip."""
+"""Build the Quest allocation and timestamp adapter around the unchanged bundled Android Turnip."""
 import io
 import json
 from pathlib import Path
@@ -12,7 +12,7 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / 'app/build/prepared-assets/graphics_driver/adrenotools-turnip25.1.0-quest1.tzst'
+OUTPUT = ROOT / 'app/build/prepared-assets/graphics_driver/adrenotools-turnip25.1.0-quest1-r2.tzst'
 A6XX_TAG = 'v26.3.0-20261012-r2'
 A6XX_SHA256 = 'bb1b2c51e6446cf428d70255d037be169ac68108c00af33aa1ba7ece711f8336'
 A6XX_URL = f'https://github.com/The412Banner/Banners-Turnip/releases/download/{A6XX_TAG}/Turnip-{A6XX_TAG}.zip'
@@ -80,7 +80,7 @@ def build_a6xx(ndk, output_dir=OUTPUT.parent, archive_path=None):
                 entries.append(('libquest_turnip.so', wrapper.read_bytes()))
             meta['libraryName'] = 'libquest_turnip.so'
         entries.append(('meta.json', (json.dumps(meta, indent=2) + '\n').encode()))
-        name = 'turnip26.3.0-quest2' if quest else 'turnip26.3.0-a6xx'
+        name = 'turnip26.3.0-quest2-r2' if quest else 'turnip26.3.0-a6xx'
         pack(entries, output_dir / f'adrenotools-{name}.tzst')
 
 
@@ -109,8 +109,8 @@ def build(ndk, output=OUTPUT):
         metadata = json.dumps({
             'libraryName': 'libquest_turnip.so',
             'name': 'Turnip Adreno 7xx - Quest GPUOBJ experimental',
-            'description': 'Bundled A7xx driver with the experimental Quest 3/3S allocation adapter.',
-            'driverVersion': 'Bundled Mesa + Quest GPUOBJ v1',
+            'description': 'Bundled A7xx driver with the experimental Quest 3/3S allocation and timestamp adapter.',
+            'driverVersion': 'Bundled Mesa + Quest GPUOBJ v2',
         }, indent=2).encode() + b'\n'
         stream = io.BytesIO()
         with tarfile.open(fileobj=stream, mode='w', format=tarfile.USTAR_FORMAT) as archive:

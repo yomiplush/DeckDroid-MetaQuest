@@ -8,8 +8,8 @@ import java.io.File
 
 object QuestExperimental {
     private const val TAG = "QuestExperimental"
-    const val DRIVER = "turnip25.1.0-quest1"
-    const val DRIVER_A6XX = "turnip26.3.0-quest2"
+    const val DRIVER = "turnip25.1.0-quest1-r2"
+    const val DRIVER_A6XX = "turnip26.3.0-quest2-r2"
 
     internal fun quest2(model: String, device: String, manufacturer: String): Boolean =
         model.equals("Quest 2", ignoreCase = true) ||
@@ -58,6 +58,13 @@ object QuestExperimental {
                 .putBoolean(defaultsKey, true)
                 .apply()
         }
+        val previousDriver = prefs.getString("androidDriver", "")
+        val updatedDriver = when (previousDriver) {
+            "turnip25.1.0-quest1" -> if (!isQuest2()) DRIVER else null
+            "turnip26.3.0-quest2" -> if (isQuest2()) DRIVER_A6XX else null
+            else -> null
+        }
+        if (updatedDriver != null) prefs.edit().putString("androidDriver", updatedDriver).apply()
         if (!prefs.getBoolean("questDisplayDefaultsV1", false)) {
             val edit = prefs.edit()
             for (mode in listOf(SessionService.MODE_STEAM, SessionService.MODE_DESKTOP, SessionService.MODE_RUN)) {
