@@ -4,7 +4,7 @@ A fork of [DroidDeck](https://github.com/Droid-Deck/DroidDeck) maintained by [yo
 
 ## Downloads and Quest builds
 
-Download the Quest 3, Quest 3S and Quest 2 APKs from [GitHub Releases](https://github.com/yomiplush/DeckDroid-MetaQuest/releases/tag/v0.6.7-quest-experimental.1). These experimental builds use the public test signing key and have not been validated on headsets. The release is marked Latest for download visibility; this does not indicate hardware validation. See the [release notes](docs/releases/v0.6.7-quest-experimental.1.md) for verification details.
+Download the Quest 3, Quest 3S and Quest 2 APKs from [GitHub Releases](https://github.com/yomiplush/DeckDroid-MetaQuest/releases/tag/v0.6.7-quest-experimental.2). These experimental builds use the public test signing key. The Quest 3 build was validated on a headset up to Steam's first Big Picture frame; Quest 3S and Quest 2 are still unvalidated on hardware. The release is marked Latest for download visibility; this does not indicate full hardware validation. See the [release notes](docs/releases/v0.6.7-quest-experimental.2.md) for verification details.
 
 | APK target | Package | Initial resolution | Android driver |
 | --- | --- | --- | --- |
@@ -16,7 +16,7 @@ Actual detected hardware selects the driver in every APK; target names never for
 
 Quest 3 and 3S share XR2 Gen 2 and 8GB RAM. Their higher initial resolution uses more of that rendering budget. Use 720p/900p for demanding games; 1440p is available on a sufficiently large reported panel, alongside custom resolution, Match screen and Follow screen. The old fork's hard 1920px cap and globally forced linear-only profile are replaced by upstream's newer device-aware presentation fixes. Existing user resolution settings and the original fork’s session multicast lock for LAN discovery are preserved. FEX, driver and compatibility improvements come from upstream; no higher FPS or sustained clock rate is claimed without hardware measurements. OS thermal control remains active.
 
-**Experimental: hardware validation pending on Quest 3, 3S and 2.** Compilation and regression tests cannot establish headset rendering, input, Steam sign-in, thermal behavior or game compatibility. Quest 2's A6xx and DirectX 12 support remain experimental. Start with DirectX 11 games at 720p on Quest 2. Export Share logs for failures; `quest-startup.txt` records model, selected driver and display defaults.
+**Experimental: Quest 3 was tested up to the first Steam frame; Quest 3S and Quest 2 have no hardware validation.** Reaching Big Picture establishes that the driver, compositor and Steam client start up, not that input, sign-in, game rendering, sustained frame rate or thermal behaviour are usable. Quest 2's A6xx and DirectX 12 support remain experimental. Start with DirectX 11 games at 720p on Quest 2. Export Share logs for failures; `quest-startup.txt` records model, selected driver and display defaults.
 
 ## Build and verify
 

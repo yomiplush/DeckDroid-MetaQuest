@@ -44,6 +44,19 @@ unchanged. Only `EACCES`/`EPERM` failures retry through `GPUOBJ_ALLOC`,
 bundled Turnip binary. Unhandled controller ioctls forward to the next
 preload hook rather than skipping it with a raw syscall.
 
+The same adapter also covers `KGSL_CMDSTREAM_READTIMESTAMP_CTXTID` for the
+retired timestamp, which Horizon OS denies. Without it, command retirement is
+never observed and `gamescope` aborts with code 134 after a `vk.WaitSemaphores`
+failure during Steam start-up. Denied reads are answered from the timestamps the
+adapter saw on successful `GPU_COMMAND`/`GPU_AUX_COMMAND` submissions for that fd
+and context: retirement is proven by a nonblocking `WAITTIMESTAMP` wait, timestamps
+submitted out of order are kept sorted, and state is dropped when the context is
+destroyed or recreated. A timestamp is never reported as retired without a
+successful wait. Driver archives are versioned (`turnip25.1.0-quest1-r2`,
+`turnip26.3.0-quest2-r2`) because cached copies survive APK updates; only a
+previous Quest driver selection is migrated to the new archive, and any other
+user choice is kept.
+
 `tools/build_local.sh` and CI build the wrapper from source using the pinned
 Android NDK; the normal preload builds include the shared Linux adapter.
 Runtime input verification checks the resulting driver archive and invalidates
