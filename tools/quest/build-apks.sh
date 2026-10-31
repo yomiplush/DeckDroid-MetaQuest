@@ -5,7 +5,7 @@ cd "$repo_root"
 sdk_dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 [[ -d "$sdk_dir/build-tools" ]] || { echo 'Set ANDROID_HOME to the Android SDK.' >&2; exit 1; }
 build_tools=$(find "$sdk_dir/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-readelf=$(find "$sdk_dir/ndk/${DROIDDECK_NDK_VERSION:-27.3.13750724}/toolchains/llvm/prebuilt" -name llvm-readelf -type f | head -1)
+readelf=$(find "$sdk_dir/ndk/${DROIDDECK_NDK_VERSION:-27.3.13750724}/toolchains/llvm/prebuilt" -name llvm-readelf | head -1)
 [[ -x "$readelf" ]] || { echo 'NDK llvm-readelf not found.' >&2; exit 1; }
 if [[ ${DROIDDECK_QUEST_REUSE_INPUTS:-0} != 1 ]]; then
     bash tools/build_local.sh
