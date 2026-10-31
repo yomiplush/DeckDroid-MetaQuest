@@ -29,7 +29,7 @@ Files: `app/build.gradle`, `tools/quest/build-apks.sh`, `README.md`.
 - [x] Embed and verify all six Quest add-on packs so unpublished local hashes can install from the APK; test valid installation and corruption cleanup.
 
 ### Task 3: Verification and delivery
-- [ ] Prepare complete runtime/native/store inputs with tools/build_local.sh and local SDK/NDK/JDK17.
-- [ ] Run build-apks.sh and validate runtime payloads, JNI libraries, alignment and signatures for all three APKs.
-- [ ] Record source revision, test results, package IDs, sizes and SHA256 in output directory.
-- [ ] Inspect git diff and deliver APK links and source without claiming hardware validation.
+- [x] Prepare complete runtime/native/store inputs with tools/build_local.sh and local SDK/NDK/JDK17.
+- [x] Run build-apks.sh and validate runtime payloads, JNI libraries, alignment and signatures for all three APKs.
+- [x] Record source revision, test results, package IDs, sizes and SHA256 in output directory.
+- [x] Inspect git diff and deliver APK links and source without claiming hardware validation.

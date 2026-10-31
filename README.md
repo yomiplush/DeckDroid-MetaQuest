@@ -4,6 +4,8 @@ A fork of [DroidDeck](https://github.com/Droid-Deck/DroidDeck) maintained by [yo
 
 ## Quest builds
 
+Download the Quest 3, Quest 3S and Quest 2 APKs from [GitHub Releases](https://github.com/yomiplush/DeckDroid-MetaQuest/releases/tag/v0.6.7-quest-experimental.1). These experimental builds use the public test signing key and have not been validated on headsets.
+
 | APK target | Package | Initial resolution | Android driver |
 | --- | --- | --- | --- |
 | Quest 3 | `com.yomiplush.deckdroid.quest3` | 1080p | A7xx + Quest GPUOBJ |
