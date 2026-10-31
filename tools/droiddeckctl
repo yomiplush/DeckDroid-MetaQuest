@@ -697,6 +697,9 @@ def execute(args: argparse.Namespace, adb: str, serial: str) -> dict:
         return add_serial(checked(provider_call(adb, serial, "glasses", request=request), "GLASSES_FAILED"), serial)
 
     if command == "logs":
+        if args.tail:
+            return add_serial(checked(provider_call(adb, serial, "logs", request={"file": args.tail}),
+                                      "LOG_PULL_FAILED"), serial)
         state = get_state(adb, serial)
         session = state.get("session", {})
         if not session.get("running") and session.get("artifactsAvailable") and not session.get("artifactsComplete"):
@@ -906,6 +909,9 @@ def build_parser() -> argparse.ArgumentParser:
     logs.add_argument("which", choices=["latest"])
     logs.add_argument("destination", nargs="?")
     logs.add_argument("--timeout", type=float, default=90)
+    logs.add_argument("--tail", nargs="?", const="session.log",
+                      choices=["session.log", "app.log", "wayland.log", "events.jsonl", "device.txt"],
+                      help="read a bounded, redacted log tail on release builds without debugging tools")
 
     shot = commands.add_parser("screenshot", help="save a device screenshot")
     shot.add_argument("path")

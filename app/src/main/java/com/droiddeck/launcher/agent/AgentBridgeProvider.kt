@@ -69,6 +69,7 @@ class AgentBridgeProvider : ContentProvider() {
 
     private fun dispatch(context: Context, method: String, request: JSONObject): JSONObject = when (method) {
         "state" -> state(context).put("ok", true)
+        "logs" -> sessionLog(context, request)
         "start" -> error("USE_DROIDDECKCTL", "Start sessions with tools/droiddeckctl so Android launches a visible Activity")
         "stop" -> stop(context)
         "resume" -> resume(context)
@@ -196,6 +197,45 @@ class AgentBridgeProvider : ContentProvider() {
 
     private fun hex(text: String, max: Int): Int? =
         text.removePrefix("0x").removePrefix("0X").takeIf { it.isNotEmpty() }?.toIntOrNull(16)?.takeIf { it in 0..max }
+
+    private fun sessionLog(context: Context, request: JSONObject): JSONObject {
+        val name = request.optString("file", "session.log")
+        if (name !in setOf("session.log", "app.log", "wayland.log", "events.jsonl", "device.txt"))
+            return error("INVALID_REQUEST", "Select a supported session log filename")
+        val dir = SessionState.logDirectory ?: SessionState.logFile?.parentFile
+            ?: SessionPaths.sessionFolders(context).lastOrNull()
+            ?: return error("NO_SESSION_LOGS", "No session logs are available")
+        val file = File(dir, name)
+        if (!file.isFile || file.canonicalFile.parentFile != dir.canonicalFile ||
+            java.nio.file.Files.isSymbolicLink(file.toPath()))
+            return error("NO_SESSION_LOGS", "The selected session log is unavailable")
+        val bytes = java.io.RandomAccessFile(file, "r").use { input ->
+            val size = input.length()
+            val start = (size - 128 * 1024).coerceAtLeast(0)
+            input.seek(start)
+            val data = ByteArray((size - start).toInt())
+            input.readFully(data)
+            val tail = if (start > 0) {
+                val newline = data.indexOf('\n'.code.toByte())
+                if (newline < 0) ByteArray(0) else data.copyOfRange(newline + 1, data.size)
+            } else data
+            if (tail.any { it == 0.toByte() }) "<binary or malformed log withheld>"
+            else try {
+                Charsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(tail)).toString()
+            } catch (_: java.nio.charset.CharacterCodingException) {
+                "<binary or malformed log withheld>"
+            }
+        }
+        com.droiddeck.launcher.core.LogRedactor.learnFromRuntime(LinuxRuntime.rootDir(context))
+        val text = bytes.lineSequence().joinToString("\n") { line ->
+            if (line.length > 64 * 1024) "<oversized log line withheld>"
+            else com.droiddeck.launcher.core.LogRedactor.redactForShare(line)
+        }
+        return JSONObject().put("ok", true).put("sessionId", dir.name).put("file", name).put("text", text)
+    }
 
     private fun state(context: Context): JSONObject {
         val runtimeVersion = LinuxRuntimeInstaller.installedVersion(context)

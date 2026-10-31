@@ -145,6 +145,14 @@ class FakeAdbTest(unittest.TestCase):
 
 
 class DroiddeckctlTest(FakeAdbTest):
+    def test_release_log_tail_uses_only_read_only_provider(self):
+        self.configure({"logs": {"ok": True, "file": "session.log", "text": "GPU wait", "sessionId": "s1"}})
+        code, answer = self.run_ctl("logs", "latest", "--tail")
+        self.assertEqual(code, 0)
+        self.assertEqual(answer["text"], "GPU wait")
+        self.assertEqual(self.calls("logs")[0]["request"], {"file": "session.log"})
+        self.assertFalse(any(x.get("method") in ("guest", "prefs", "env") or "pull" in x["args"] for x in self.calls()))
+
     def test_oversized_requests_are_refused_before_adb(self):
         with self.assertRaises(ctl.ControlError) as caught:
             ctl.provider_call(str(self.adb), "fake-1", "guest", request={"stdin": "x" * ctl.REQUEST_CAP})

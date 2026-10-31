@@ -104,6 +104,44 @@ class AgentSecurityTest {
         assertTrue(call(provider, "state").getBoolean("ok"))
     }
 
+    @Test fun releaseLogsAreReadOnlyScopedAndRedactedWithoutCommandAccess() {
+        val provider = Robolectric.buildContentProvider(AgentBridgeProvider::class.java).create().get()
+        val oldDir = SessionState.logDirectory
+        val dir = File(context.filesDir, "logs/2026-10-31-99-steam").apply { mkdirs() }
+        try {
+            SessionState.logDirectory = dir
+            File(dir, "session.log").writeText("GPU wait failed\naccess_token=secret-token-value\n")
+            val response = call(provider, "logs", JSONObject().put("file", "session.log"))
+            assertTrue(response.toString(), response.getBoolean("ok"))
+            assertTrue(response.getString("text").contains("GPU wait failed"))
+            assertFalse(response.getString("text").contains("secret-token-value"))
+            assertFalse(AgentAccess.commandsAllowed(context))
+            val rejected = call(provider, "logs", JSONObject().put("file", "../shared_prefs/session.xml"))
+            assertEquals("INVALID_REQUEST", rejected.getJSONObject("error").getString("code"))
+        } finally {
+            SessionState.logDirectory = oldDir
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun logTailsWithholdBinaryAndMalformedEncoding() {
+        val provider = Robolectric.buildContentProvider(AgentBridgeProvider::class.java).create().get()
+        val oldDir = SessionState.logDirectory
+        val dir = File(context.filesDir, "logs/2026-10-31-98-steam").apply { mkdirs() }
+        try {
+            SessionState.logDirectory = dir
+            for (bytes in listOf("access_token=secret-token-value".toByteArray(Charsets.UTF_16LE),
+                    byteArrayOf(0xc3.toByte(), 0x28))) {
+                File(dir, "session.log").writeBytes(bytes)
+                val response = call(provider, "logs")
+                assertEquals("<binary or malformed log withheld>", response.getString("text"))
+            }
+        } finally {
+            SessionState.logDirectory = oldDir
+            dir.deleteRecursively()
+        }
+    }
+
     @Test fun providerChecksCallerPermissionBeforeDecoding() {
         val provider = Robolectric.buildContentProvider(AgentBridgeProvider::class.java).create().get()
         ShadowBinder.setCallingUid(Process.myUid() + 10001)

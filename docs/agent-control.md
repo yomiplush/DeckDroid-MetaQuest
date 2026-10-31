@@ -46,6 +46,8 @@ isolation or a sandbox against the authorized caller. Main already supported arb
 programs through `run`; restricting credential access would require addressing that route too.
 ADB access remains a trust boundary, and ADB input can operate the device's own toggle.
 
+The `logs latest --tail` command reads only supported session log filenames through the DUMP-protected provider. It returns at most a 128 KiB tail, scrubs sensitive log content, and works with Debugging tools disabled. It cannot execute commands, change settings, or read arbitrary paths. The full-directory pull still requires filesystem access.
+
 The helper exchanges private files with the app and adds no network listener. The guarded Steam
 DevTools port is bound to loopback and accepts only peers with a fresh private registration for a
 live socket descriptor, matching socket inode, destination port, and address family. The existing
@@ -121,6 +123,7 @@ tools/droiddeckctl prefs get session
 tools/droiddeckctl prefs set session some_key true --type bool
 
 tools/droiddeckctl logs latest ./session-artifacts
+tools/droiddeckctl logs latest --tail session.log
 tools/droiddeckctl screenshot ./screen.png --display 4
 tools/droiddeckctl xr-frame ./xr-capture
 tools/droiddeckctl record ./clip.mp4 --seconds 8 --display 0
