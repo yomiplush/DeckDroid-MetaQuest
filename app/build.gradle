@@ -304,6 +304,23 @@ if (uvcDir) {
 }
 tasks.named('preBuild').configure { dependsOn(stageRuntimeAssets) }
 
+if (questTarget != 'universal') {
+    addonPacks.keySet().each { name ->
+        if (!file("build/packs/${name}.tar.zst").isFile()) {
+            throw new GradleException("Quest APKs embed add-on packs: run tools/packs/build.sh app/build/packs first")
+        }
+    }
+    def stageQuestAddonPacks = tasks.register('stageQuestAddonPacks', Sync) {
+        from(layout.buildDirectory.dir('packs')) {
+            include addonPacks.keySet().collect { "${it}.tar.zst".toString() }
+        }
+        into(layout.buildDirectory.dir('questAssets/addon-packs'))
+    }
+    android.sourceSets.main.assets.srcDir(layout.buildDirectory.dir('questAssets'))
+    tasks.named('preBuild').configure { dependsOn(stageQuestAddonPacks) }
+}
+
+
 def stageGogNotices = tasks.register('stageGogNotices', Copy) {
     from(layout.projectDirectory.dir('src/main/rust/stores/vendor/xdelta3')) { include 'LICENSE', 'README.droiddeck.md' }
     into(layout.buildDirectory.dir('gogNotices/licenses/xdelta3'))

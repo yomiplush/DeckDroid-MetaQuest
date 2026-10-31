@@ -25,6 +25,19 @@ for target in quest3 quest3s quest2; do
     apk=app/build/outputs/apk/release/app-release.apk
     python3 tools/release/check_session_assets.py "$apk"
     python3 tools/release/runtime_inputs.py apk "$apk"
+    python3 - "$apk" <<'PYPACKS'
+import hashlib
+from pathlib import Path
+import sys
+from zipfile import ZipFile
+with ZipFile(sys.argv[1]) as apk:
+    for name in ('proot', 'directaudio', 'tracking', 'xbox', 'comet', 'butler'):
+        expected = Path(f'app/build/packs/{name}.tar.zst').read_bytes()
+        embedded = apk.read(f'assets/addon-packs/{name}.tar.zst')
+        if hashlib.sha256(embedded).digest() != hashlib.sha256(expected).digest():
+            sys.exit(f'Embedded {name} pack differs from verified inputs')
+print('Verified all six embedded add-on packs')
+PYPACKS
     python3 tools/release/check_android_libraries.py "$apk" --readelf "$readelf" "${stores_check[@]}"
     "$build_tools/zipalign" -c -p 4 "$apk"
     "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$output/$target-signature.txt"
@@ -48,7 +61,7 @@ done
 {
     printf 'source_commit=%s\n' "$(git rev-parse HEAD)"
     printf 'tree_state=%s\n' "$(git status --porcelain | wc -l) changed paths"
-    printf 'hardware_validation=pending (all targets)\nsigning=public repository test key\n'
+    printf 'hardware_validation=pending (all targets)\nsigning=public repository test key\nembedded_addon_packs=proot,directaudio,tracking,xbox,comet,butler\n'
     printf 'store_engines=%s\n' "$([[ ${DROIDDECK_SKIP_RUST:-0} == 1 ]] && echo omitted || echo included)"
 } > "$output/BUILD.txt"
 destination="$repo_root/dist/quest"

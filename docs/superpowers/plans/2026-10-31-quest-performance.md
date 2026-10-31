@@ -26,6 +26,8 @@ Files: `app/build.gradle`, `tools/quest/build-apks.sh`, `README.md`.
 - [x] Add script to prepare inputs once then assemble, validate and copy three target APKs with hashes. Fail on any validation error.
 - [x] Restore fork disclosure and funding metadata; describe settings, public test signature and hardware-unvalidated status.
 
+- [x] Embed and verify all six Quest add-on packs so unpublished local hashes can install from the APK; test valid installation and corruption cleanup.
+
 ### Task 3: Verification and delivery
 - [ ] Prepare complete runtime/native/store inputs with tools/build_local.sh and local SDK/NDK/JDK17.
 - [ ] Run build-apks.sh and validate runtime payloads, JNI libraries, alignment and signatures for all three APKs.

@@ -14,10 +14,10 @@ import java.io.File
 import java.io.FileInputStream
 
 /**
- * A pack built by CI alongside this APK (tools/packs). Main and release builds publish it to
+ * A pack built alongside this APK (tools/packs). Main and release builds publish it to
  * DroidDeck-Components under a content-addressed tag; a PR test build attaches packs that are not there
  * yet to its pr-N release on DroidDeck-CI. The APK pins the pack's SHA-256, so only the bytes this build
- * was made with install, whichever host serves them.
+ * was made with install, whichever host serves them. Quest APKs embed the same pinned archives.
  */
 internal class AddonPack(
     val name: String, private val sha256: String, val size: Long, private val required: List<String>,
@@ -97,6 +97,21 @@ internal class AddonPack(
         return false
     }
 
+    internal fun copyEmbeddedArchive(context: Context, archive: File): Boolean? {
+        if (!available || context.assets.list("addon-packs")?.contains("$name.tar.zst") != true) return null
+        var verified = false
+        try {
+            archive.parentFile?.mkdirs()
+            context.assets.open("addon-packs/$name.tar.zst").use { input ->
+                archive.outputStream().use { output -> input.copyTo(output) }
+            }
+            verified = (size <= 0L || archive.length() == size) && Hashes.sha256(archive) == sha256
+            return verified
+        } finally {
+            if (!verified) archive.delete()
+        }
+    }
+
     private fun install(context: Context): Boolean {
         if (!available) {
             Log.w(TAG, if (reuseDeviceCopy) "$name: this build has no pack and none is installed" else "$name: this build has no pack")
@@ -104,11 +119,11 @@ internal class AddonPack(
         }
         val root = root(context).apply { mkdirs() }
         val archive = File(root, "$sha256.tar.zst")
-        val downloaded = urls.any { url ->
+        val downloaded = copyEmbeddedArchive(context, archive) ?: urls.any { url ->
             Downloader.downloadFile(url, archive, true, sha256) { p -> mutableState.value = State.Downloading(p.coerceIn(0f, 1f)) }
                 .also { if (!it) archive.delete() }
         }
-        if (!downloaded) return false
+        if (!downloaded) { archive.delete(); return false }
         val staging = File(root, "$sha256.partial")
         staging.deleteRecursively()
         try {
