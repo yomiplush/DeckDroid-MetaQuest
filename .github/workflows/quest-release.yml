@@ -51,10 +51,11 @@ jobs:
         with:
           go-version: '1.24'
 
-      - name: Install required packages
+      - name: Install required packages and ARM64 binfmt
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends zstd unzip curl
+          docker run --privileged --rm tonistiigi/binfmt --install arm64
 
       - name: Install pinned Android SDK and NDK
         run: |
