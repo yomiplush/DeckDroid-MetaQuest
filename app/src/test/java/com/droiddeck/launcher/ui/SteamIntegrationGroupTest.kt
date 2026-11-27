@@ -41,7 +41,8 @@ class SteamIntegrationGroupTest {
         compose.onNodeWithTag("integration-action-brightness").performClick()
         compose.onNodeWithTag("integration-action-home").performClick()
         compose.onNodeWithTag("integration-action-shortcuts").performClick()
-        assertEquals(listOf(Feature.BRIGHTNESS, Feature.HOME, Feature.SHORTCUTS), requests)
+        compose.onNodeWithTag("integration-action-bluetooth").performClick()
+        assertEquals(listOf(Feature.BRIGHTNESS, Feature.HOME, Feature.SHORTCUTS, Feature.BLUETOOTH), requests)
     }
 
     @Test fun switchesReflectAndroidGrants() {
@@ -50,14 +51,12 @@ class SteamIntegrationGroupTest {
         compose.onNodeWithTag("integration-action-brightness").assert(stateIs("On"))
         compose.onNodeWithTag("integration-action-shortcuts").assert(stateIs("On"))
         compose.onNodeWithTag("integration-action-wifi").assert(stateIs("Off"))
-        compose.onNodeWithText("3 of 4 on").assertExists()
+        compose.onNodeWithTag("integration-action-bluetooth").assert(stateIs("Off"))
+        compose.onNodeWithText("3 of 5 on").assertExists()
     }
 
-    @Test fun shortcutsWaitForHome() {
+    @Test fun shortcutsDoNotNeedHome() {
         show()
-        compose.onNodeWithTag("integration-action-shortcuts").assertIsNotEnabled()
-        compose.onNodeWithText("Needs DroidDeck as Home").assertExists()
-        compose.runOnIdle { state.value = state.value.copy(home = true) }
         compose.onNodeWithTag("integration-action-shortcuts").assertIsEnabled()
     }
 

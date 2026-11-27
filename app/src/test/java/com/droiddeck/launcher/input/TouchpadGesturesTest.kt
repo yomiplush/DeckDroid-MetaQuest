@@ -33,7 +33,9 @@ class TouchpadGesturesTest {
         override fun onScroll(dx: Float, dy: Float) { events += "scroll" }
         override fun onScrollEnd() { events += "scroll end" }
         override fun onZoom(steps: Int) { events += "zoom $steps" }
+        override fun onThreeFingerTap(): Boolean { events += "three tap"; return claimThreeTap }
     }
+    private var claimThreeTap = false
 
     @Before fun setUp() {
         touchpad = TouchpadGestures(SLOP, listener)
@@ -50,7 +52,18 @@ class TouchpadGesturesTest {
         assertEquals(listOf("left down", "left up"), events)
     }
 
-    @Test fun threeFingerTapClicksTheMiddleButton() {
+    @Test fun threeFingerTapClicksTheMiddleButtonWhenUnclaimed() {
+        threeFingerTap()
+        assertEquals(listOf("three tap", "middle down", "middle up"), events)
+    }
+
+    @Test fun claimedThreeFingerTapSkipsTheMiddleButton() {
+        claimThreeTap = true
+        threeFingerTap()
+        assertEquals(listOf("three tap"), events)
+    }
+
+    private fun threeFingerTap() {
         touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
         advance(10)
         touch(MotionEvent.ACTION_POINTER_DOWN, 1, 1 to (400f to 300f), 2 to (600f to 310f))
@@ -61,7 +74,6 @@ class TouchpadGesturesTest {
         touch(MotionEvent.ACTION_POINTER_UP, 1, 1 to (400f to 300f), 2 to (600f to 310f))
         touch(MotionEvent.ACTION_UP, 0, 1 to (400f to 300f))
         advance(100)
-        assertEquals(listOf("middle down", "middle up"), events)
     }
 
     @Test fun desktopTwoFingerSlideScrollsSmoothlyAndStops() {
@@ -248,6 +260,75 @@ class TouchpadGesturesTest {
         advance(10)
         touch(MotionEvent.ACTION_MOVE, 0, 1 to (400f to 309f), 2 to (640f to 302f))
         assertFalse(events.contains("left down"))
+    }
+
+    @Test fun tapsDoNotClickWhileClicksAreOff() {
+        touchpad.clicks = false
+        tap()
+        advance(20)
+        tap()
+        advance(TouchTiming.HOLD_MS + 100)
+        touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
+        advance(TouchTiming.HOLD_MS + 100)
+        touch(MotionEvent.ACTION_UP, 0, 1 to (400f to 300f))
+        advance(200)
+        assertFalse(events.any { it.endsWith(" down") })
+    }
+
+    @Test fun twoFingerTapDoesNotClickWhileClicksAreOff() {
+        touchpad.clicks = false
+        touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
+        advance(10)
+        touch(MotionEvent.ACTION_POINTER_DOWN, 1, 1 to (400f to 300f), 2 to (600f to 310f))
+        advance(60)
+        touch(MotionEvent.ACTION_POINTER_UP, 1, 1 to (400f to 300f), 2 to (600f to 310f))
+        advance(10)
+        touch(MotionEvent.ACTION_UP, 0, 1 to (400f to 300f))
+        advance(200)
+        assertFalse(events.any { it.endsWith(" down") })
+    }
+
+    @Test fun pointerStillMovesWhileClicksAreOff() {
+        touchpad.clicks = false
+        touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
+        advance(10)
+        touch(MotionEvent.ACTION_MOVE, 0, 1 to (440f to 300f))
+        advance(10)
+        touch(MotionEvent.ACTION_UP, 0, 1 to (440f to 300f))
+        assertTrue(events.contains("move"))
+        assertTrue(touchpad.x > 960f)
+        assertFalse(events.any { it.endsWith(" down") })
+    }
+
+    @Test fun tapsClickAgainOnceClicksAreBackOn() {
+        touchpad.clicks = false
+        tap()
+        advance(400)
+        touchpad.clicks = true
+        tap()
+        advance(200)
+        assertEquals(listOf("left down", "left up"), events)
+    }
+
+    @Test fun aTapWhileClicksWereOffDoesNotStartADragOnceTheyAreBackOn() {
+        touchpad.clicks = false
+        tap()
+        advance(20)
+        touchpad.clicks = true
+        touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
+        assertEquals(emptyList<String>(), events)
+        advance(80)
+        touch(MotionEvent.ACTION_UP, 0, 1 to (400f to 300f))
+        advance(200)
+        assertEquals(listOf("left down", "left up"), events)
+    }
+
+    @Test fun doubleTapStillDragsWhileClicksStayOn() {
+        tap()
+        advance(20)
+        touchpad.clicks = true
+        touch(MotionEvent.ACTION_DOWN, 0, 1 to (400f to 300f))
+        assertEquals(listOf("left down", "left up", "left down"), events)
     }
 
     private fun tap() {

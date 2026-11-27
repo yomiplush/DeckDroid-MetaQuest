@@ -1,0 +1,150 @@
+package com.droiddeck.launcher.gpu
+
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
+import android.util.Log
+import com.droiddeck.launcher.core.SessionPart
+import java.io.File
+import java.io.FileWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class ClockLogComponent(private val logFile: File) : SessionPart() {
+    @Volatile private var running = false
+    private var stopped = false
+    private var thread: Thread? = null
+
+    @Synchronized override fun start() {
+        if (stopped || running) return
+        running = true
+        thread = Thread({ run() }, "clock-log").apply { isDaemon = true; start() }
+    }
+
+    @Synchronized override fun stop() {
+        stopped = true
+        running = false
+        thread?.interrupt()
+        thread = null
+    }
+
+    private fun run() {
+        val policies = File("/sys/devices/system/cpu/cpufreq").listFiles { f -> f.name.startsWith("policy") }
+            ?.sortedBy { it.name.removePrefix("policy").toIntOrNull() ?: 0 } ?: emptyList()
+        val gpuCandidates = gpuSources()
+        val gpu = gpuCandidates.firstOrNull { !it.startsWith("/proc/") && firstNumber(it) != null }
+        val stepSources = GpuLimits.stepSources()
+        val maxSources = GpuLimits.maxSources()
+        val minSources = GpuLimits.minSources()
+        val steps = GpuLimits.first(stepSources)
+        var ceiling = ceilingSource(maxSources)
+        val power = app().getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val time = SimpleDateFormat("HH:mm:ss", Locale.US)
+        try {
+            FileWriter(logFile, true).use { w ->
+                w.write("== clocks: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.HARDWARE}), every ${PERIOD_MS / 1000}s\n")
+                w.write("cpu policies: ${policies.joinToString { p -> p.name + " " + (File(p, "related_cpus").readTextOrNull()?.trim() ?: "?") }}\n")
+                probeLines("gpu source", gpuCandidates).forEach { w.write(it + "\n") }
+                w.write("gpu clock from: ${gpu ?: "nothing readable"}\n")
+                (probeLines("gpu limit", stepSources, ::firstStep) + probeLines("gpu limit", maxSources, ::limit) +
+                    probeLines("gpu limit", minSources, ::firstStep)).distinct().forEach { w.write(it + "\n") }
+                limitLines(steps, ceiling, GpuLimits.first(minSources)).forEach { w.write(it + "\n") }
+                w.flush()
+                while (running && logFile.length() < MAX_BYTES) {
+                    val line = StringBuilder(time.format(Date()))
+                    for (p in policies) {
+                        val cur = firstNumber(File(p, "scaling_cur_freq").path)
+                        val max = firstNumber(File(p, "scaling_max_freq").path)
+                        val hw = firstNumber(File(p, "cpuinfo_max_freq").path)
+                        line.append(" ${p.name.removePrefix("policy").let { "p$it" }} ${mhz(cur)}/${mhz(max)}")
+                        if (hw != null && max != null && max < hw) line.append("(of ${mhz(hw)})")
+                    }
+                    if (ceiling == null) ceiling = ceilingSource(maxSources)?.also { w.write("gpu ceiling from: $it\n") }
+                    line.append(gpuField(gpu, ceiling, steps?.mhz?.last()))
+                    if (power != null && Build.VERSION.SDK_INT >= 29) {
+                        line.append(" | thermal ${power.currentThermalStatus}")
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            val h = power.getThermalHeadroom(10)
+                            if (!h.isNaN()) line.append(String.format(Locale.US, " headroom %.2f", h))
+                        }
+                    }
+                    batteryTenths()?.let { line.append(String.format(Locale.US, " | battery %.1f C", it / 10.0)) }
+                    w.write(line.append('\n').toString())
+                    w.flush()
+                    try { Thread.sleep(PERIOD_MS) } catch (e: InterruptedException) { break }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "clock log stopped: $e")
+        }
+    }
+
+    private fun batteryTenths(): Int? =
+        app().registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)?.takeIf { it != Int.MIN_VALUE }
+
+    companion object {
+        private const val TAG = "SessionService"
+        private const val PERIOD_MS = 2000L
+        private const val MAX_BYTES = 4L shl 20
+
+        private fun gpuSources(): List<String> {
+            val list = mutableListOf(
+                "/sys/kernel/ged/hal/current_freqency", "/sys/kernel/ged/hal/current_frequency",
+                "/proc/gpufreqv2/gpufreq_status", "/proc/gpufreq/gpufreq_var_dump",
+                "/sys/kernel/gpu/gpu_clock", "/sys/class/misc/mali0/device/cur_freq",
+                "/sys/class/misc/mali0/device/clock", "/sys/class/kgsl/kgsl-3d0/clock_mhz",
+                "/sys/class/kgsl/kgsl-3d0/gpu_clock", "/sys/class/kgsl/kgsl-3d0/gpuclk",
+                "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq", "/sys/kernel/gpu/gpu_clock",
+                "/sys/devices/platform/soc@0/3d00000.gpu/devfreq/3d00000.gpu/cur_freq",
+            )
+            listOf("kgsl-3d0", "3d00000.qcom,kgsl-3d0", "2c00000.qcom,kgsl-3d0", "5000000.qcom,kgsl-3d0", "5900000.qcom,kgsl-3d0")
+                .forEach { list.add("/sys/class/devfreq/$it/cur_freq") }
+            File("/sys/class/devfreq").list()?.sorted()?.forEach { node ->
+                if (node.contains("mali", true) || node.contains("gpu", true)) list.add("/sys/class/devfreq/$node/cur_freq")
+            }
+            return list.distinct()
+        }
+
+        internal fun probeLines(label: String, sources: List<String>, read: (String) -> Long? = ::firstNumber): List<String> = sources.mapNotNull { source ->
+            when {
+                !File(source).exists() -> null
+                read(source) != null -> "$label $source: readable"
+                else -> "$label $source: refused"
+            }
+        }
+
+        internal fun limitLines(steps: GpuLimits.Found?, ceiling: String?, floor: GpuLimits.Found?): List<String> = listOf(
+            "gpu steps: " + (steps?.let { "${it.mhz.joinToString(" ")} MHz from ${it.path}" } ?: "nothing readable"),
+            "gpu ceiling from: " + (ceiling ?: "nothing readable"),
+            "gpu floor: " + (floor?.let { "${it.mhz.first()} MHz from ${it.path}" } ?: "nothing readable"),
+        )
+
+        internal fun gpuField(clock: String?, ceiling: String?, top: Long?): String {
+            if (clock == null && ceiling == null) return ""
+            val field = StringBuilder(" | gpu ").append(mhz(clock?.let(::firstNumber)))
+            ceiling?.let(::limit)?.let { max ->
+                field.append('/').append(mhz(max))
+                if (top != null && GpuLimits.mhz(max) < top) field.append("(of $top)")
+            }
+            return field.append(" MHz").toString()
+        }
+
+        private fun File.readTextOrNull(): String? = runCatching { readText() }.getOrNull()
+
+        private fun firstNumber(path: String): Long? =
+            runCatching { Regex("\\d+").find(File(path).readText())?.value?.toLong() }.getOrNull()
+
+        internal fun limit(path: String): Long? = firstNumber(path)?.takeIf { it > 0 }
+
+        internal fun firstStep(path: String): Long? = GpuLimits.read(path).firstOrNull()
+
+        internal fun ceilingSource(sources: List<String>): String? = sources.firstOrNull { limit(it) != null }
+
+        private fun mhz(raw: Long?): String = raw?.let { GpuLimits.mhz(it).toString() } ?: "?"
+    }
+}
