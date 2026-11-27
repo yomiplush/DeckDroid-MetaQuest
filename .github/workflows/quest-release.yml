@@ -54,7 +54,7 @@ jobs:
       - name: Install required packages and ARM64 binfmt
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends zstd unzip curl
+          sudo apt-get install -y --no-install-recommends zstd unzip curl mingw-w64
           docker run --privileged --rm tonistiigi/binfmt --install arm64
 
       - name: Install pinned Android SDK and NDK
