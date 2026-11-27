@@ -1,0 +1,116 @@
+name: Release Quest APKs
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag name (e.g. v0.7.11-quest-experimental.1)
+        required: true
+        default: v0.7.11-quest-experimental.1
+      title:
+        description: Release title
+        required: true
+        default: DeckDroid MetaQuest 0.7.11 (Experimental)
+      prerelease:
+        description: Mark as pre-release
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quest-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build and publish Meta Quest APKs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk /opt/ghc /usr/local/.ghcup || true
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install required packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends zstd unzip curl
+
+      - name: Install pinned Android SDK and NDK
+        run: |
+          set -euo pipefail
+          . tools/ci/toolchains.env
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "DROIDDECK_NDK_VERSION=$CI_ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+          yes | "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "cmake;3.22.1" \
+            "ndk;${CI_ANDROID_NDK_VERSION}"
+
+      - name: Build and verify Meta Quest APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash tools/quest/build-apks.sh
+
+      - name: Upload Quest APKs to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TITLE: ${{ inputs.title }}
+          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          FILES=(
+            dist/quest/DeckDroid-quest3-experimental.apk
+            dist/quest/DeckDroid-quest3s-experimental.apk
+            dist/quest/DeckDroid-quest2-experimental.apk
+            dist/quest/SHA256SUMS
+            dist/quest/BUILD.txt
+          )
+          NOTES=$(cat <<EOF
+          Experimental Meta Quest builds based on upstream DroidDeck 0.7.11+ (\`${GITHUB_SHA::9}\`).
+
+          ### Included APKs
+          - \`DeckDroid-quest3-experimental.apk\` — Meta Quest 3
+          - \`DeckDroid-quest3s-experimental.apk\` — Meta Quest 3S
+          - \`DeckDroid-quest2-experimental.apk\` — Meta Quest 2
+
+          All APKs embed the verified add-on packs and are signed with the repository test key.
+          EOF
+          )
+          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${FILES[@]}" --clobber -R "$GITHUB_REPOSITORY"
+          else
+            FLAGS=(--title "$RELEASE_TITLE" --notes "$NOTES" --target "$GITHUB_SHA" -R "$GITHUB_REPOSITORY")
+            if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+              FLAGS+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" "${FILES[@]}" "${FLAGS[@]}"
+          fi

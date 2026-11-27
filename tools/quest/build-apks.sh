@@ -5,7 +5,12 @@ cd "$repo_root"
 sdk_dir=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
 [[ -d "$sdk_dir/build-tools" ]] || { echo 'Set ANDROID_HOME to the Android SDK.' >&2; exit 1; }
 build_tools=$(find "$sdk_dir/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-readelf=$(find "$sdk_dir/ndk/${DROIDDECK_NDK_VERSION:-27.3.13750724}/toolchains/llvm/prebuilt" -name llvm-readelf | head -1)
+ndk_version=${DROIDDECK_NDK_VERSION:-}
+if [[ -z "$ndk_version" && -f "$repo_root/tools/ci/toolchains.env" ]]; then
+    . "$repo_root/tools/ci/toolchains.env"
+    ndk_version=${CI_ANDROID_NDK_VERSION:-}
+fi
+readelf=$(find "$sdk_dir/ndk/${ndk_version:-30.0.16248370}/toolchains/llvm/prebuilt" -name llvm-readelf | head -1)
 [[ -x "$readelf" ]] || { echo 'NDK llvm-readelf not found.' >&2; exit 1; }
 if [[ ${DROIDDECK_QUEST_REUSE_INPUTS:-0} != 1 ]]; then
     bash tools/build_local.sh
@@ -31,12 +36,13 @@ from pathlib import Path
 import sys
 from zipfile import ZipFile
 with ZipFile(sys.argv[1]) as apk:
-    for name in ('proot', 'directaudio', 'tracking', 'xbox', 'comet', 'butler'):
+    packs = ('proot', 'directaudio', 'tracking', 'xbox', 'comet', 'butler', 'powervr', 'ubisoft', 'rockstar', 'dirt', 'epic')
+    for name in packs:
         expected = Path(f'app/build/packs/{name}.tar.zst').read_bytes()
         embedded = apk.read(f'assets/addon-packs/{name}.tar.zst')
         if hashlib.sha256(embedded).digest() != hashlib.sha256(expected).digest():
             sys.exit(f'Embedded {name} pack differs from verified inputs')
-print('Verified all six embedded add-on packs')
+print(f'Verified all {len(packs)} embedded add-on packs')
 PYPACKS
     python3 tools/release/check_android_libraries.py "$apk" --readelf "$readelf" "${stores_check[@]}"
     "$build_tools/zipalign" -c -p 4 "$apk"
@@ -61,7 +67,7 @@ done
 {
     printf 'source_commit=%s\n' "$(git rev-parse HEAD)"
     printf 'tree_state=%s\n' "$(git status --porcelain | wc -l) changed paths"
-    printf 'hardware_validation=pending (all targets)\nsigning=public repository test key\nembedded_addon_packs=proot,directaudio,tracking,xbox,comet,butler\n'
+    printf 'hardware_validation=pending (all targets)\nsigning=public repository test key\nembedded_addon_packs=proot,directaudio,tracking,xbox,comet,butler,powervr,ubisoft,rockstar,dirt,epic\n'
     printf 'store_engines=%s\n' "$([[ ${DROIDDECK_SKIP_RUST:-0} == 1 ]] && echo omitted || echo included)"
 } > "$output/BUILD.txt"
 destination="$repo_root/dist/quest"
